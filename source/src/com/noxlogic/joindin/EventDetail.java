@@ -4,8 +4,6 @@ package com.noxlogic.joindin;
  * Displays event details (info, talk list)
  */
 
-import java.text.DateFormat;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -55,28 +53,27 @@ public class EventDetail extends JIActivity implements OnClickListener {
     }
 
     public void displayDetails (int event_id) {
-        DataHelper dh = DataHelper.getInstance();
-        JSONObject event = dh.getEvent (event_id);
-        if (event == null) return;
+    	JoindInEvent event = new JoindInEvent (event_id);
+    	if (event.isValid()) return;
 
         // Set all the event information
         TextView t;
         t = (TextView) this.findViewById(R.id.EventDetailsEventCaption);
-        t.setText (event.optString("event_name"));
+        t.setText (event.getName());
         t = (TextView) this.findViewById(R.id.EventDetailsEventLoc);
-        t.setText (event.optString("event_loc"));
+        t.setText (event.getLocation ());
         t = (TextView) this.findViewById(R.id.EventDetailsDate);
-        String d1 = DateFormat.getDateInstance().format(event.optLong("event_start")*1000);
-        String d2 = DateFormat.getDateInstance().format(event.optLong("event_end")*1000);
+        String d1 = event.getStartDate ();
+        String d2 = event.getEndDate ();
         t.setText(d1.equals(d2) ? d1 : d1 + " - " + d2);
         t = (TextView) this.findViewById(R.id.EventDetailsStub);
-        t.setText (event.optString("event_stub"));
+        t.setText (event.getStub ());
         t = (TextView) this.findViewById(R.id.EventDetailsDescription);
-        t.setText (event.optString("event_desc"));
+        t.setText (event.getDescription());
 
         // Add number of comments to the correct button caption 
         Button b = (Button) this.findViewById(R.id.ButtonEventDetailsViewComments);
-        int commentCount = event.optInt("num_comments");
+        int commentCount = event.getCommentCount();
         if (commentCount == 1) {
             b.setText(String.format(getString(R.string.generalViewCommentSingular), commentCount));
         } else {
@@ -85,10 +82,10 @@ public class EventDetail extends JIActivity implements OnClickListener {
 
         /* Current API does not return the number of talks for specified event. As soon as it does
          * we can update the button caption */
-        if (event.has("num_talks")) {
+        int talkCount = event.getTalkCount ();
+        if (talkCount > 0) {
             b = (Button) this.findViewById(R.id.ButtonEventDetailsViewTalks);
-            int talkCount = event.optInt("num_talks");
-
+            
             if (talkCount == 1) {
                 b.setText(String.format(getString(R.string.generalViewTalkSingular), talkCount));
             } else {
@@ -98,8 +95,7 @@ public class EventDetail extends JIActivity implements OnClickListener {
 
         // See if this event has tracks
         b = (Button) this.findViewById(R.id.ButtonEventDetailsViewTracks);                
-        JSONArray tracks = event.optJSONArray("tracks");
-        int trackCount = (tracks == null) ? 0 : tracks.length();
+        int trackCount = event.getTrackCount ();
         if (trackCount == 1) {
             b.setText(String.format(getString(R.string.generalViewTrackSingular), trackCount));
         } else {
@@ -111,7 +107,7 @@ public class EventDetail extends JIActivity implements OnClickListener {
 
         // Tick the checkbox, depending on if we are attending or not
         CheckBox c = (CheckBox)findViewById(R.id.CheckBoxEventDetailsAttending);
-        c.setChecked(event.optBoolean("user_attending"));
+        c.setChecked(event.isUserAttending());
     }
 
     
