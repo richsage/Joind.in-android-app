@@ -13,7 +13,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -44,7 +43,6 @@ public class EventListFragment extends ListFragment implements EventListFragment
 
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        Log.d("JoindInApp", "onAttach");
         parentActivity = (Main) activity;
     }
 
