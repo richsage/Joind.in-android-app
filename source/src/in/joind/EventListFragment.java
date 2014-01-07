@@ -1,9 +1,5 @@
 package in.joind;
 
-/*
- * Main activity. Displays all events and let the user select one.
- */
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -32,6 +28,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
+/**
+ * The list fragment that is shown in our tabbed view.
+ * Lists events depending on event type (in our case, the fragment's Tag value)
+ */
 public class EventListFragment extends ListFragment implements EventListFragmentInterface {
 
     private JIEventAdapter m_eventAdapter;
