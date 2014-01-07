@@ -146,9 +146,14 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
         return sb.toString();
     }
 
-    protected void setTabTitle(String title, int eventCount) {
-        getSupportActionBar().setTitle(title);
-        getSupportActionBar().setSubtitle(eventCount + " event" + (eventCount == 1 ? "" : "s"));
+    public void setEventsCountTitle(int eventCount) {
+        String subTitle;
+        if (eventCount == 1) {
+            subTitle = String.format(getString(R.string.generalEventCountSingular), eventCount);
+        } else {
+            subTitle = String.format(getString(R.string.generalEventCountPlural), eventCount);
+        }
+        getSupportActionBar().setSubtitle(subTitle);
     }
 
     public void setEventsTitle(String title, int count) {
@@ -167,5 +172,10 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
         fragment.filterByString(s);
 
         return false;
+    }
+
+    protected void setTabTitle(String title, int eventCount) {
+        getSupportActionBar().setTitle(title);
+        setEventsCountTitle(eventCount);
     }
 }

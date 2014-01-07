@@ -81,6 +81,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
             setListShown(false);
         }
         loadEvents(this.getTag());
+        setTitle(this.getTag());
 
         setupEvents();
     }
@@ -127,12 +128,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
         // Tell the adapter that our data set has changed so it can update it
         m_eventAdapter.notifyDataSetChanged();
 
-        String title = "";
-        if (eventType.equals("hot")) title = this.getString(R.string.activityMainEventsHot);
-        if (eventType.equals("past")) title = this.getString(R.string.activityMainEventsPast);
-        if (eventType.equals("upcoming")) title = this.getString(R.string.activityMainEventsUpcoming);
-
-        parentActivity.setEventsTitle(title, count);
+        parentActivity.setEventsCountTitle(count);
 
         return count;
     }
@@ -150,6 +146,14 @@ public class EventListFragment extends ListFragment implements EventListFragment
         m_eventAdapter.getFilter().filter(s);
     }
 
+    protected void setTitle(String eventType) {
+        String title = "";
+        if (eventType.equals("hot")) title = this.getString(R.string.activityMainEventsHot);
+        if (eventType.equals("past")) title = this.getString(R.string.activityMainEventsPast);
+        if (eventType.equals("upcoming")) title = this.getString(R.string.activityMainEventsUpcoming);
+
+        parentActivity.setEventsTitle(title, 0);
+    }
 
     class EventLoaderThread extends Thread {
         private volatile Thread runner;
