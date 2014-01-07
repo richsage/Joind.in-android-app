@@ -1,9 +1,5 @@
 package in.joind;
 
-/*
- * Main activity. Displays all events and let the user select one.
- */
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +18,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TabHost;
 
+/**
+ * Main activity - contains the tab host, which we'll load our list fragments into
+ */
 public class Main extends JIActivity implements SearchView.OnQueryTextListener {
 
     private String currentTab = "hot";                   // Current selected tab
@@ -48,8 +47,7 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
     }
 
 
-    protected void initialiseTabs()
-    {
+    protected void initialiseTabs() {
         tabHost = (FragmentTabHost) findViewById(R.id.tabHost);
         tabHost.setup(this, getSupportFragmentManager(), R.id.tabContent);
         tabHost.addTab(tabHost.newTabSpec("hot").setIndicator("Hot"), EventListFragment.class, null);
