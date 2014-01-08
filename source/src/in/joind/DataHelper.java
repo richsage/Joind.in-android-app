@@ -227,7 +227,7 @@ public final class DataHelper {
 
     public int populateTracks(int event_id, JITrackAdapter m_trackAdapter) {
         int trackCount = 0;
-        Cursor c = this.db.rawQuery("SELECT json FROM events WHERE event_id = " + event_id, null);
+        Cursor c = this.db.rawQuery("SELECT json FROM events WHERE _rowid_ = " + event_id, null);
 
         if (c.getCount() == 0) {
             c.close();
