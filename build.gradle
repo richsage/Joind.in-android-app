@@ -46,12 +46,13 @@ dependencies {
 // Custom task to create our oauth.properties file for release
 File oauthProperties = file('source/res/raw/oauth.properties')
 task createOAuthProperties {
+    env = System.getenv()
+    env.each {
+        println it
+    }
+
     if (!oauthProperties.exists()) {
         logger.info('Creating oauth.properties file from environment variables')
-        env = System.getenv()
-        env.each {
-            println it
-        }
         ant.propertyfile(file: oauthProperties) {
             entry( key: "client_id", value: System.getenv("oauth.client_id"))
             entry( key: "client_secret", value: System.getenv("oauth.client_secret"))
