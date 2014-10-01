@@ -50,6 +50,8 @@ task createOAuthProperties {
     env.each {
         println it
     }
+    println System.properties['oauth.client_id']
+    println System.properties['oauth.client_secret']
 
     if (!oauthProperties.exists()) {
         logger.info('Creating oauth.properties file from environment variables')
