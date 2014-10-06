@@ -7,8 +7,6 @@ package in.joind;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
-import in.joind.R;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -36,7 +34,7 @@ public class EventDetail extends JIActivity implements OnClickListener {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         // Set layout
-        setContentView(R.layout.eventdetail);
+        setContentView(R.layout.activity_event_detail);
 
         // Get info from the intent scratch board
         try {
@@ -121,7 +119,7 @@ public class EventDetail extends JIActivity implements OnClickListener {
         t = (TextView) this.findViewById(R.id.EventDetailsDescription);
         t.setText (event.optString("description"));
         Linkify.addLinks(t, Linkify.ALL);
-        
+
         // Add number of talks to the correct button caption
         Button b = (Button) this.findViewById(R.id.ButtonEventDetailsViewTalks);
         int talkCount = dh.getTalkCountForEvent(event_row_ID);
