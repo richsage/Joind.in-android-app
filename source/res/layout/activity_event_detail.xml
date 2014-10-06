@@ -65,8 +65,7 @@
 
     </LinearLayout>
 
-    <!-- BELOW HERE IS LEGACY -->
-
+    <!-- Event description -->
     <ScrollView
         android:id="@+id/ScrollView01"
         android:layout_width="match_parent"
@@ -107,6 +106,7 @@
 
     </LinearLayout>
 
+    <!-- Buttons at the bottom for talks, tracks and comments -->
     <LinearLayout
         android:weightSum="3"
         android:layout_width="match_parent"
