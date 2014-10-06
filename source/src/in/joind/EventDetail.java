@@ -112,10 +112,11 @@ public class EventDetail extends JIActivity implements OnClickListener {
             getSupportActionBar().setSubtitle("");
         }
 
+        // Hash tags - only shown if there are any
         String hashtag = event.optString("hashtag");
         this.findViewById(R.id.EventDetailsHashtagsRow).setVisibility(hashtag.length() > 0 && !hashtag.equalsIgnoreCase("null") ? View.VISIBLE : View.GONE);
         t = (TextView) this.findViewById(R.id.EventDetailsStub);
-        t.setText (event.optString("hashtag"));
+        t.setText(event.optString("hashtag"));
 
         t = (TextView) this.findViewById(R.id.EventDetailsDescription);
         t.setText (event.optString("description"));
