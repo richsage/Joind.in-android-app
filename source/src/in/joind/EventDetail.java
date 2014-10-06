@@ -6,6 +6,7 @@ package in.joind;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -119,6 +120,23 @@ public class EventDetail extends JIActivity implements OnClickListener {
         t = (TextView) this.findViewById(R.id.EventDetailsDescription);
         t.setText (event.optString("description"));
         Linkify.addLinks(t, Linkify.ALL);
+
+        // Display number of attendees
+        t = (TextView) findViewById(R.id.EventDetailNumAttending);
+        int attendeeCount = eventJSON.optInt("attendee_count", 0);
+        String attendingFormat = getString(R.string.EventDetailsNumAttendingFormat);
+        String pluralSingular = getString(R.string.EventDetailsNumAttendingSingular);
+        String eventWhen = getString(R.string.EventDetailsNumAttendingUpcoming);
+        if (attendeeCount != 1) {
+            pluralSingular = getString(R.string.EventDetailsNumAttendingPlural);
+        }
+        try {
+            if (dfInput.parse(event.optString("end_date")).before(new Date())) {
+                eventWhen = getString(R.string.EventDetailsNumAttendingPast);
+            }
+        } catch (ParseException e) {
+        }
+        t.setText(String.format(attendingFormat, attendeeCount, pluralSingular, eventWhen));
 
         // Add number of talks to the correct button caption
         Button b = (Button) this.findViewById(R.id.ButtonEventDetailsViewTalks);

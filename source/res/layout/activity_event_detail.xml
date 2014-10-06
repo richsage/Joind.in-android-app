@@ -14,26 +14,29 @@
         android:padding="8dp">
 
         <TextView
+            android:id="@+id/EventDetailNumAttending"
             android:drawableLeft="@drawable/ic_person"
             android:textSize="16sp"
-            android:text="112 people attending"
+            android:text=""
+            android:gravity="center_vertical"
             android:layout_gravity="center_vertical"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="match_parent" />
 
         <CheckBox
             android:id="@+id/CheckBoxEventDetailsAttending"
-            android:text="and me"
+            android:text="@string/EventDetailsAndMe"
             android:textSize="16sp"
-            android:layout_weight="1"
+            android:gravity="center_vertical"
             android:layout_gravity="center_vertical"
+            android:layout_weight="1"
             android:layout_width="0dp"
-            android:layout_height="wrap_content" />
+            android:layout_height="match_parent" />
 
         <ImageButton
             android:layout_gravity="center_vertical|right"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="match_parent" />
 
     </LinearLayout>
 
@@ -49,15 +52,16 @@
             android:drawableLeft="@drawable/ic_marker"
             android:id="@+id/EventDetailsEventLoc"
             android:textSize="16sp"
+            android:gravity="center_vertical"
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:layout_width="0dp"
-            android:layout_height="wrap_content" />
+            android:layout_height="match_parent" />
 
         <ImageButton
             android:layout_gravity="center_vertical|right"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="match_parent" />
 
     </LinearLayout>
 

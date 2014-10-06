@@ -38,6 +38,12 @@
     <!-- Event details strings -->
     <string name="EventDetailsEventLocLabel">Venue:</string>
     <string name="EventDetailsEventHashtagsLabel">Hashtags:</string>
+    <string name="EventDetailsAndMe">and me!</string>
+    <string name="EventDetailsNumAttendingFormat" formatted="false">%s %s %s</string>
+    <string name="EventDetailsNumAttendingSingular">person</string>
+    <string name="EventDetailsNumAttendingPlural">people</string>
+    <string name="EventDetailsNumAttendingPast">attended</string>
+    <string name="EventDetailsNumAttendingUpcoming">attending</string>
 
     <!-- Talk details strings -->
     <string name="TalkDetailSubtitle">Talk details</string>
