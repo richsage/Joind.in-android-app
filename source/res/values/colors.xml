@@ -3,4 +3,6 @@
     <color name="joindin_lightblue">#DEE6EF</color>
     <color name="joindin_turquoise">#007B97</color>
     <color name="joindin_darkgrey">#444444</color>
+    <color name="joindin_mediumgrey">#999999</color>
+    <color name="joindin_lightgrey">#ececec</color>
 </resources>
