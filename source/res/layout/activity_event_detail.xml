@@ -14,6 +14,7 @@
         android:padding="8dp">
 
         <TextView
+            android:drawableLeft="@drawable/ic_person"
             android:textSize="16sp"
             android:text="112 people attending"
             android:layout_gravity="center_vertical"
@@ -45,6 +46,7 @@
         android:padding="8dp">
 
         <TextView
+            android:drawableLeft="@drawable/ic_marker"
             android:id="@+id/EventDetailsEventLoc"
             android:textSize="16sp"
             android:layout_gravity="center_vertical"
