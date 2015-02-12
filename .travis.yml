@@ -2,6 +2,7 @@ language: android
 
 android:
   components:
+    - build-tools-21.1.1
     - sys-img-armeabi-v7a-android-19
 
 # Emulator Management: Create, Start and Wait
