@@ -1,13 +1,20 @@
 language: android
-
 android:
   components:
-    - build-tools-21.1.1
-    - sys-img-armeabi-v7a-android-19
-
-# Emulator Management: Create, Start and Wait
+  - build-tools-21.1.1
+  - sys-img-armeabi-v7a-android-19
 before_script:
-  - echo no | android create avd --force -n test -t android-19 --abi armeabi-v7a
-  - emulator -avd test -no-skin -no-audio -no-window &
-  - android-wait-for-emulator
-  - adb shell input keyevent 82 &
+- echo no | android create avd --force -n test -t android-19 --abi armeabi-v7a
+- emulator -avd test -no-skin -no-audio -no-window &
+- android-wait-for-emulator
+- adb shell input keyevent 82 &
+deploy:
+  provider: s3
+  bucket: joindin-android-builds
+  region: eu-west-1
+  local_dir: build
+  skip_cleanup: true
+  secret_access_key:
+    secure: AP5ZPGEWIwQcxeButQO/SIKndb5FaC8hchrX7Z6dGijteb5h/SxxwSVXfFAq1lkCyN82zswpahaP6ZvHGUDrC8Q/gw4PRFIIMipE1wXGY8Tb7uUVoe87+KE0sJHN1voqnBKXV3NPnovrKPPbqXALNXe/2Jivwt815hpGDtj19/s=
+  access_key_id:
+    secure: SCiAqCE0gP581oxvnNrkEGhT23n7FSeJT+UyTgT39KVSzRt9b2+eVBZ9dd2zjqw1neygipt4eT3p4Ip0SwnH2RalJPx87WxmBDNB1LCbdi7kUQcHi0eb1cjmMxSyg7fczFd6T4GLbNmJLyMHrVVhSMi+6QWWLoJE78cG2+6APhY=
