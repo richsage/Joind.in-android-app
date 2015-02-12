@@ -49,8 +49,8 @@ task createOAuthProperties {
     if (!oauthProperties.exists()) {
         logger.info('Creating oauth.properties file from environment variables')
         ant.propertyfile(file: oauthProperties) {
-            entry( key: "client_id", value: System.getenv("oauth.client_id"))
-            entry( key: "client_secret", value: System.getenv("oauth.client_secret"))
+            entry( key: "client_id", value: System.getenv("oauth_client_id"))
+            entry( key: "client_secret", value: System.getenv("oauth_client_secret"))
         }
     }
 }
