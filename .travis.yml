@@ -18,3 +18,5 @@ deploy:
     secure: AP5ZPGEWIwQcxeButQO/SIKndb5FaC8hchrX7Z6dGijteb5h/SxxwSVXfFAq1lkCyN82zswpahaP6ZvHGUDrC8Q/gw4PRFIIMipE1wXGY8Tb7uUVoe87+KE0sJHN1voqnBKXV3NPnovrKPPbqXALNXe/2Jivwt815hpGDtj19/s=
   access_key_id:
     secure: SCiAqCE0gP581oxvnNrkEGhT23n7FSeJT+UyTgT39KVSzRt9b2+eVBZ9dd2zjqw1neygipt4eT3p4Ip0SwnH2RalJPx87WxmBDNB1LCbdi7kUQcHi0eb1cjmMxSyg7fczFd6T4GLbNmJLyMHrVVhSMi+6QWWLoJE78cG2+6APhY=
+  on:
+    all_branches: true
