@@ -529,8 +529,9 @@ class JIEventAdapter extends ArrayAdapter<JSONObject> {
         }
 
         // Set our texts
-        if (at != null)
-            at.setText(String.format(this.context.getString(R.string.activityMainAttending), o.optInt("attendee_count")));
+        if (at != null) {
+            at.setText(o.optString("attendee_count", "0"));
+        }
         if (tt != null) tt.setText(o.optString("name"));
         if (bt != null) {
             // Display start date. Only display end date when it differs (ie: it's multiple day event)
