@@ -523,9 +523,9 @@ class JIEventAdapter extends ArrayAdapter<JSONObject> {
         // When the user is attending this event, we display our "attending" image.
         ImageView im = (ImageView) convertView.findViewById(R.id.EventDetailAttendingImg);
         if (!o.optBoolean("attending")) {
-            im.setVisibility(View.GONE);
+            im.setImageResource(R.drawable.person);
         } else {
-            im.setVisibility(View.VISIBLE);
+            im.setImageResource(R.drawable.person_attending);
         }
 
         // Set our texts

@@ -34,13 +34,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <ImageView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/EventDetailAttendingImg"
-                android:background="@drawable/rating_full_orange"
-                android:layout_margin="2dp" />
-
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -59,6 +52,7 @@
                     android:layout_height="wrap_content"
                     android:id="@+id/EventDetailAttending" />
                 <ImageView
+                    android:id="@+id/EventDetailAttendingImg"
                     android:src="@drawable/person"
                     android:adjustViewBounds="true"
                     android:layout_width="wrap_content"
