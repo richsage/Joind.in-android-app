@@ -66,8 +66,8 @@ public class EventDetail extends JIActivity implements OnClickListener {
         event = DataHelper.getInstance(this).getEvent(eventRowID);
 
         if (event == null) {
-            Log.v(JIActivity.LOG_JOINDIN_APP, "No event JSON available to activity");
-            Crashlytics.setString("eventDetail_eventJSON", getIntent().getStringExtra("eventJSON"));
+            Log.v(JIActivity.LOG_JOINDIN_APP, "No event available to activity");
+            Crashlytics.setInt("failed.eventDetail_eventRowID", eventRowID);
 
             // Tell the user
             showToast(getString(R.string.activityEventDetailFailedJSON), Toast.LENGTH_LONG);
@@ -152,21 +152,21 @@ public class EventDetail extends JIActivity implements OnClickListener {
             // Display event comments activity
             Intent myIntent = new Intent();
             myIntent.setClass(getApplicationContext(), EventComments.class);
-            myIntent.putExtra("eventJSON", getIntent().getStringExtra("eventJSON"));
+            myIntent.putExtra(INTENT_KEY_EVENT_ROW_ID, event._rowID);
             startActivity(myIntent);
         }
         if (v == findViewById(R.id.ButtonEventDetailsViewTalks)) {
             // Display talks activity
             Intent myIntent = new Intent();
             myIntent.setClass(getApplicationContext(), EventTalks.class);
-            myIntent.putExtra("eventJSON", getIntent().getStringExtra("eventJSON"));
+            myIntent.putExtra(INTENT_KEY_EVENT_ROW_ID, event._rowID);
             startActivity(myIntent);
         }
         if (v == findViewById(R.id.ButtonEventDetailsViewTracks)) {
-            // Display talks activity
+            // Display tracks activity
             Intent myIntent = new Intent();
             myIntent.setClass(getApplicationContext(), EventTracks.class);
-            myIntent.putExtra("eventJSON", getIntent().getStringExtra("eventJSON"));
+            myIntent.putExtra(INTENT_KEY_EVENT_ROW_ID, event._rowID);
             startActivity(myIntent);
         }
         if (v == findViewById(R.id.CheckBoxEventDetailsAttending)) {

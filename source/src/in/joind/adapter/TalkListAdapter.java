@@ -1,4 +1,4 @@
-package in.joind;
+package in.joind.adapter;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -31,7 +31,11 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
-class JITalkAdapter extends ArrayAdapter<JSONObject> implements Filterable, SectionIndexer {
+import in.joind.JIActivity;
+import in.joind.JIRest;
+import in.joind.R;
+
+public class TalkListAdapter extends ArrayAdapter<JSONObject> implements Filterable, SectionIndexer {
     private final ArrayList<JSONObject> items;
     private ArrayList<JSONObject> filtered_items;
     private Context context;
@@ -40,7 +44,7 @@ class JITalkAdapter extends ArrayAdapter<JSONObject> implements Filterable, Sect
     private boolean isAuthenticated;
     private String[] sections;
 
-    public JITalkAdapter(Context context, int textViewResourceId, ArrayList<JSONObject> mTalks, TimeZone tz, boolean isAuthenticated) {
+    public TalkListAdapter(Context context, int textViewResourceId, ArrayList<JSONObject> mTalks, TimeZone tz, boolean isAuthenticated) {
         super(context, textViewResourceId, mTalks);
         this.context = context;
         this.items = mTalks;

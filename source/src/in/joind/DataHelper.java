@@ -29,6 +29,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 import in.joind.adapter.EventListAdapter;
+import in.joind.adapter.TalkListAdapter;
 import in.joind.model.Event;
 
 
@@ -300,7 +301,7 @@ public final class DataHelper {
     }
 
     // Populates a talk adapter and returns the number of items populated
-    public int populateTalks(int event_id, JITalkAdapter m_talkAdapter) {
+    public int populateTalks(int event_id, TalkListAdapter m_talkAdapter) {
         Cursor c;
 
         c = this.db.rawQuery("SELECT json,_rowid_,starred FROM talks WHERE event_id = " + event_id, null);

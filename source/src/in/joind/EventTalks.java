@@ -21,7 +21,9 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Filter;
+import android.widget.Toast;
 
+import com.crashlytics.android.Crashlytics;
 import com.markupartist.android.widget.PullToRefreshListView;
 
 import org.json.JSONArray;
@@ -31,6 +33,9 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.TimeZone;
 
+import in.joind.adapter.TalkListAdapter;
+import in.joind.model.Event;
+
 public class EventTalks extends JIActivity implements OnClickListener {
 
     private final static int EVENT_TALKS_SHOW_TALK_DETAILS = 1;
@@ -39,8 +44,8 @@ public class EventTalks extends JIActivity implements OnClickListener {
      */
     private final static String PREFS_TALK_LIST_INDEX = "TalkListIndex_%d";
 
-    private JITalkAdapter m_talkAdapter;
-    private JSONObject eventJSON;
+    private TalkListAdapter m_talkAdapter;
+    private Event event;
     private JSONObject trackJSON = null;
     private int eventRowID = 0;
     private int firstVisibleItem = 0;
@@ -76,39 +81,39 @@ public class EventTalks extends JIActivity implements OnClickListener {
 
         final Intent callingIntent = getIntent();
 
-        // Get event ID from the intent scratch board
-        try {
-            this.eventJSON = new JSONObject(callingIntent.getStringExtra("eventJSON"));
-            if (getIntent().hasExtra("eventTrack")) {
+        eventRowID = callingIntent.getIntExtra(EventDetail.INTENT_KEY_EVENT_ROW_ID, 0);
+        event = DataHelper.getInstance(this).getEvent(eventRowID);
+        if (event == null) {
+            Log.v(JIActivity.LOG_JOINDIN_APP, "No event available to activity");
+            Crashlytics.setInt("failed.eventTalks_eventRowID", eventRowID);
+
+            // Tell the user
+            showToast(getString(R.string.activityEventDetailFailedJSON), Toast.LENGTH_LONG);
+            finish();
+            return;
+        }
+
+        // Track?
+        if (getIntent().hasExtra("eventTrack")) {
+            try {
                 this.trackJSON = new JSONObject(callingIntent.getStringExtra("eventTrack"));
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
-        } catch (JSONException e) {
-            Log.e(JIActivity.LOG_JOINDIN_APP, "No event passed to activity", e);
-        }
-        try {
-            eventRowID = this.eventJSON.getInt("rowID");
-        } catch (JSONException e) {
-            Log.e(JIActivity.LOG_JOINDIN_APP, "No row ID in event JSON");
-        }
-        if (eventRowID == 0) {
-            // TODO alert and stop activity
-            Log.e(JIActivity.LOG_JOINDIN_APP, "Event row ID is invalid");
         }
 
         // Set titlebar
         ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) actionBar.setTitle(this.eventJSON.optString("name"));
+        if (actionBar != null) actionBar.setTitle(this.event.name);
 
         // Initialize talk list
         ArrayList<JSONObject> m_talks = new ArrayList<>();
-        TimeZone tz;
-        try {
-            String tz_string = this.eventJSON.getString("tz_continent") + '/' + this.eventJSON.getString("tz_place");
+        TimeZone tz = TimeZone.getDefault();
+        if (this.event.tz_continent != null && this.event.tz_place != null) {
+            String tz_string = this.event.tz_continent + '/' + this.event.tz_place;
             tz = TimeZone.getTimeZone(tz_string);
-        } catch (JSONException e) {
-            tz = TimeZone.getDefault();
         }
-        m_talkAdapter = new JITalkAdapter(this, R.layout.talkrow, m_talks, tz, isAuthenticated());
+        m_talkAdapter = new TalkListAdapter(this, R.layout.talkrow, m_talks, tz, isAuthenticated());
         talklist = (PullToRefreshListView) findViewById(R.id.ListViewEventTalks);
         talklist.setAdapter(m_talkAdapter);
 
@@ -121,7 +126,7 @@ public class EventTalks extends JIActivity implements OnClickListener {
                 // open talk detail activity with event and talk data
                 Intent myIntent = new Intent();
                 myIntent.setClass(getApplicationContext(), TalkDetail.class);
-                myIntent.putExtra("eventJSON", callingIntent.getStringExtra("eventJSON"));
+                myIntent.putExtra(EventDetail.INTENT_KEY_EVENT_ROW_ID, event._rowID);
                 myIntent.putExtra("talkJSON", parent.getAdapter().getItem(pos).toString());
                 startActivityForResult(myIntent, EVENT_TALKS_SHOW_TALK_DETAILS);
             }
@@ -129,12 +134,7 @@ public class EventTalks extends JIActivity implements OnClickListener {
         talklist.setOnRefreshListener(new PullToRefreshListView.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                try {
-                    loadTalks(eventRowID, trackURI, eventJSON.getString("talks_uri"));
-                } catch (JSONException e) {
-                    Log.e(JIActivity.LOG_JOINDIN_APP, "No talks URI available");
-                    talklist.onRefreshComplete();
-                }
+                loadTalks(eventRowID, trackURI, event.talks_uri);
             }
         });
         talklist.setOnScrollListener(new AbsListView.OnScrollListener() {
@@ -152,11 +152,7 @@ public class EventTalks extends JIActivity implements OnClickListener {
         talklist.setSelection(firstVisibleItem);
 
         // Load new talks (in background)
-        try {
-            loadTalks(eventRowID, trackURI, eventJSON.getString("talks_uri"));
-        } catch (JSONException e) {
-            Log.e(JIActivity.LOG_JOINDIN_APP, "No talks URI available");
-        }
+        loadTalks(eventRowID, trackURI, event.talks_uri);
     }
 
     @Override
@@ -327,7 +323,7 @@ public class EventTalks extends JIActivity implements OnClickListener {
     protected void applyStarredFilter(String filterType) {
         boolean showFilterHeader = false;
 
-        JITalkAdapter.StarredFilter starredFilter = (JITalkAdapter.StarredFilter) m_talkAdapter.getFilter();
+        TalkListAdapter.StarredFilter starredFilter = (TalkListAdapter.StarredFilter) m_talkAdapter.getFilter();
         if (filterType.equals("")) {
             starredFilter.setCheckStarredStatus(false);
         }
