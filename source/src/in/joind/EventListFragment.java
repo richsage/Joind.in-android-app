@@ -197,6 +197,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
 
         callback.reset();
         HashMap<String, String> params = new HashMap<>();
+        params.put("verbose", "yes");
         params.put("filter", eventType);
         currentCall = service.getAPI().events(params);
         currentCall.enqueue(callback);
@@ -213,8 +214,8 @@ public class EventListFragment extends ListFragment implements EventListFragment
                 Intent myIntent = new Intent();
                 myIntent.setClass(getActivity().getApplicationContext(), EventDetail.class);
 
-                // pass the JSON data for specified event to the next activity
-                myIntent.putExtra("eventJSON", parent.getAdapter().getItem(pos).toString());
+                Event event = (Event) parent.getAdapter().getItem(pos);
+                myIntent.putExtra(EventDetail.INTENT_KEY_EVENT_ROW_ID, event._rowID);
                 startActivity(myIntent);
             }
         });

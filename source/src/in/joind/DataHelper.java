@@ -130,19 +130,16 @@ public final class DataHelper {
         return eventID;
     }
 
-    // load event
-    public JSONObject getEvent(int eventRowID) {
-        Cursor c = this.db.rawQuery("SELECT json FROM events WHERE _rowid_ = " + eventRowID, null);
-        JSONObject json;
-        try {
-            c.moveToFirst();
-            json = new JSONObject(c.getString(0));
-        } catch (Exception e) {
-            json = new JSONObject();
-        } finally {
-            if (!c.isClosed()) c.close();
+    public Event getEvent(int eventRowID) {
+        Event event = null;
+        Cursor c = this.db.rawQuery("SELECT json,_rowid_ FROM events WHERE _rowid_ = " + eventRowID, null);
+        if (c.moveToFirst()) {
+            event = gson.fromJson(c.getString(0), Event.class);
+            event._rowID = c.getInt(1);
+            c.close();
         }
-        return json;
+
+        return event;
     }
 
     public long getEventIDByURI(String eventURI) {

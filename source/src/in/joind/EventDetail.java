@@ -19,16 +19,16 @@ import android.widget.Toast;
 
 import com.crashlytics.android.Crashlytics;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
+import in.joind.model.Event;
+
 public class EventDetail extends JIActivity implements OnClickListener {
-    private JSONObject eventJSON;
-    private int eventRowID = 0;
+    final public static String INTENT_KEY_EVENT_ROW_ID = "eventRowID";
+
+    private Event event;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,23 +40,6 @@ public class EventDetail extends JIActivity implements OnClickListener {
         // Set layout
         setContentView(R.layout.eventdetail);
 
-        // Get info from the intent scratch board
-        try {
-            this.eventJSON = new JSONObject(getIntent().getStringExtra("eventJSON"));
-            eventRowID = this.eventJSON.getInt("rowID");
-        } catch (JSONException e) {
-            // No JSON means we can't continue
-            Log.v(JIActivity.LOG_JOINDIN_APP, "No event JSON available to activity");
-            Crashlytics.setString("eventDetail_eventJSON", getIntent().getStringExtra("eventJSON"));
-
-            // Tell the user
-            showToast(getString(R.string.activityEventDetailFailedJSON), Toast.LENGTH_LONG);
-            finish();
-            return;
-        }
-        if (eventRowID == 0) {
-            Log.e(JIActivity.LOG_JOINDIN_APP, "Event row ID is invalid");
-        }
 
         // Add handler to buttons
         Button button = (Button) findViewById(R.id.ButtonEventDetailsViewComments);
@@ -71,12 +54,6 @@ public class EventDetail extends JIActivity implements OnClickListener {
         // attending the event)
         CheckBox checkbox = (CheckBox) findViewById(R.id.CheckBoxEventDetailsAttending);
         checkbox.setOnClickListener(this);
-
-        try {
-            loadDetails(eventRowID, eventJSON.getString("verbose_uri"));
-        } catch (JSONException e) {
-            Log.e(JIActivity.LOG_JOINDIN_APP, "No verbose URI available");
-        }
     }
 
     public void onResume() {
@@ -85,21 +62,29 @@ public class EventDetail extends JIActivity implements OnClickListener {
         CheckBox checkbox = (CheckBox) findViewById(R.id.CheckBoxEventDetailsAttending);
         checkbox.setEnabled(isAuthenticated());
 
-        displayDetails(eventRowID);
+        int eventRowID = getIntent().getIntExtra(INTENT_KEY_EVENT_ROW_ID, 0);
+        event = DataHelper.getInstance(this).getEvent(eventRowID);
+
+        if (event == null) {
+            Log.v(JIActivity.LOG_JOINDIN_APP, "No event JSON available to activity");
+            Crashlytics.setString("eventDetail_eventJSON", getIntent().getStringExtra("eventJSON"));
+
+            // Tell the user
+            showToast(getString(R.string.activityEventDetailFailedJSON), Toast.LENGTH_LONG);
+            finish();
+            return;
+        }
+
+        displayDetails();
     }
 
-    public void displayDetails(int event_row_ID) {
-        DataHelper dh = DataHelper.getInstance(this);
-        JSONObject event = dh.getEvent(event_row_ID);
-        if (event == null) return;
-
-        // Set all the event information
+    public void displayDetails() {
         ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) actionBar.setTitle(event.optString("name"));
+        if (actionBar != null) actionBar.setTitle(event.name);
 
         TextView t;
         t = (TextView) this.findViewById(R.id.EventDetailsEventLoc);
-        t.setText(event.optString("location"));
+        t.setText(event.location);
 
         String d1;
         String d2;
@@ -109,26 +94,28 @@ public class EventDetail extends JIActivity implements OnClickListener {
         SimpleDateFormat dfOutput = new SimpleDateFormat(fmt, Locale.US),
                 dfInput = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
         try {
-            d1 = dfOutput.format(dfInput.parse(event.optString("start_date")));
-            d2 = dfOutput.format(dfInput.parse(event.optString("end_date")));
+            d1 = dfOutput.format(dfInput.parse(event.start_date));
+            d2 = dfOutput.format(dfInput.parse(event.end_date));
             getSupportActionBar().setSubtitle(d1.equals(d2) ? d1 : d1 + " - " + d2);
         } catch (ParseException e) {
             e.printStackTrace();
             getSupportActionBar().setSubtitle("");
         }
 
-        String hashtag = event.optString("hashtag");
-        this.findViewById(R.id.EventDetailsHashtagsRow).setVisibility(hashtag.length() > 0 && !hashtag.equalsIgnoreCase("null") ? View.VISIBLE : View.GONE);
-        t = (TextView) this.findViewById(R.id.EventDetailsStub);
-        t.setText(event.optString("hashtag"));
+        String hashtag = event.hashtag;
+        this.findViewById(R.id.EventDetailsHashtagsRow).setVisibility(hashtag != null && hashtag.length() > 0 ? View.VISIBLE : View.GONE);
+        if (hashtag != null) {
+            t = (TextView) this.findViewById(R.id.EventDetailsStub);
+            t.setText(event.hashtag);
+        }
 
         t = (TextView) this.findViewById(R.id.EventDetailsDescription);
-        t.setText(event.optString("description"));
+        t.setText(event.description);
         Linkify.addLinks(t, Linkify.ALL);
 
         // Add number of talks to the correct button caption
         Button b = (Button) this.findViewById(R.id.ButtonEventDetailsViewTalks);
-        int talkCount = dh.getTalkCountForEvent(event_row_ID);
+        int talkCount = event.talks_count;
         if (talkCount == 0) {
             b.setText(getString(R.string.generalViewTalkNoCount));
         } else if (talkCount == 1) {
@@ -139,7 +126,7 @@ public class EventDetail extends JIActivity implements OnClickListener {
 
         // Add number of comments to the correct button caption
         b = (Button) this.findViewById(R.id.ButtonEventDetailsViewComments);
-        int commentCount = event.optInt("event_comments_count");
+        int commentCount = event.event_comments_count;
         if (commentCount == 1) {
             b.setText(String.format(getString(R.string.generalViewCommentSingular), commentCount));
         } else {
@@ -148,7 +135,7 @@ public class EventDetail extends JIActivity implements OnClickListener {
 
         // See if this event has tracks
         b = (Button) this.findViewById(R.id.ButtonEventDetailsViewTracks);
-        int trackCount = dh.getTrackCountForEvent(event_row_ID);
+        int trackCount = event.tracks_count;
         if (trackCount == 1) {
             b.setText(String.format(getString(R.string.generalViewTrackSingular), trackCount));
         } else {
@@ -157,48 +144,8 @@ public class EventDetail extends JIActivity implements OnClickListener {
 
         // Tick the checkbox, depending on if we are attending or not
         CheckBox c = (CheckBox) findViewById(R.id.CheckBoxEventDetailsAttending);
-        c.setChecked(event.optBoolean("attending"));
+        c.setChecked(event.attending);
     }
-
-
-    public void loadDetails(final int eventRowID, final String eventVerboseURI) {
-        // Display progress bar
-        displayProgressBarCircular(true);
-
-        new Thread() {
-            public void run() {
-                // Fetch talk data from joind.in API
-                JIRest rest = new JIRest(EventDetail.this);
-                int error = rest.getJSONFullURI(eventVerboseURI);
-
-                if (error == JIRest.OK) {
-                    JSONObject fullResponse = rest.getJSONResult();
-                    JSONObject jsonEvent = null;
-                    try {
-                        jsonEvent = fullResponse.getJSONArray("events").getJSONObject(0);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-
-
-                    //  Update event details
-                    DataHelper dh = DataHelper.getInstance(EventDetail.this);
-                    dh.updateEvent(eventRowID, jsonEvent);
-                }
-
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        displayDetails(eventRowID);
-                    }
-                });
-
-                // Remove progress bar
-                displayProgressBarCircular(false);
-            }
-
-        }.start();
-    }
-
 
     public void onClick(View v) {
         if (v == findViewById(R.id.ButtonEventDetailsViewComments)) {
