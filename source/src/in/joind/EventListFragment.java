@@ -126,6 +126,9 @@ public class EventListFragment extends ListFragment implements EventListFragment
         callback = new APIEventsCallback();
         listView = getListView();
 
+        // Show what we have to start with
+        displayEvents();
+
         if (getUserVisibleHint()) {
             performEventListUpdate();
         }
@@ -237,7 +240,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
     /**
      *  Display events by populating the m_eventAdapter (custom list) with items loaded from DB
      */
-    public int displayEvents(String eventType) {
+    public int displayEvents() {
         listView = getListView();
         if (listView != null) {
             setViewVisibility(true, false);
@@ -261,7 +264,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
 
     public void setEventSortOrder(int sortOrder) {
         eventSortOrder = sortOrder;
-        displayEvents(eventType);
+        displayEvents();
     }
 
     public int getEventSortOrder() {
@@ -309,13 +312,13 @@ public class EventListFragment extends ListFragment implements EventListFragment
             dataHelper.insertEvents(eventType, events);
 
             if (nextPage == null) {
-                displayEvents(eventType);
+                displayEvents();
                 return;
             }
 
             // Don't continue after one round of Hot events
             if (eventType.equals(LIST_TYPE_HOT)) {
-                displayEvents(eventType);
+                displayEvents();
                 return;
             }
 
@@ -328,7 +331,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
         @Override
         public void onFailure(Call<EventCollectionResponse<ArrayList<Event>>> call, Throwable t) {
             parentActivity.displayHorizontalProgress(false);
-            displayEvents(eventType);
+            displayEvents();
             Toast toast = Toast.makeText(parentActivity, getString(R.string.activityMainCouldntLoadEvents), Toast.LENGTH_LONG);
             toast.show();
         }
