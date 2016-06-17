@@ -83,6 +83,7 @@
     <string name="activityMainEventsMyEvent">My events</string>
 
     <string name="activityMainNoEventsToList">No events to list</string>
+    <string name="activityMainCouldntLoadEvents">Couldn\'t load events</string>
 
     <string name="activityTalkListFilteringByHeader">Filtering by starred talks</string>
 

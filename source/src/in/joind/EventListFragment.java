@@ -1,47 +1,37 @@
 package in.joind;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.Filter;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.markupartist.android.widget.PullToRefreshListView;
 import com.squareup.picasso.Picasso;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Locale;
+import java.util.HashMap;
 
-import in.joind.activity.SettingsActivity;
+import in.joind.adapter.EventListAdapter;
+import in.joind.api.APIService;
 import in.joind.fragment.FragmentLifecycle;
 import in.joind.fragment.LogInDialogFragment;
+import in.joind.model.Event;
+import in.joind.model.EventCollectionResponse;
+import in.joind.model.Metadata;
 import in.joind.user.UserManager;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * The list fragment that is shown in our tabbed view.
@@ -55,12 +45,13 @@ public class EventListFragment extends ListFragment implements EventListFragment
     final static public String LIST_TYPE_MY_EVENTS = "my_events";
     final static public String LIST_TYPE_PAST = "past";
 
-    private JIEventAdapter m_eventAdapter;
-    private EventLoaderThread eventLoaderThread;
+    private APIService service;
+    private APIEventsCallback callback;
+    private Call<EventCollectionResponse<ArrayList<Event>>> currentCall;
+    private EventListAdapter m_eventAdapter;
     int eventSortOrder = DataHelper.ORDER_DATE_ASC;
+
     Main parentActivity;
-    JIRest rest;
-    LogInReceiver logInReceiver;
     ListView listView;
     View emptyView;
     LinearLayout notSignedInView;
@@ -69,22 +60,22 @@ public class EventListFragment extends ListFragment implements EventListFragment
 
     public void onAttach(Activity activity) {
         super.onAttach(activity);
+        android.util.Log.d("JOINDIN", "onAttach called");
     }
 
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        eventType = getArguments().getString(ARG_LIST_TYPE_KEY);
+    @Override
+    public void setArguments(Bundle args) {
+        super.setArguments(args);
+        eventType = args.getString(ARG_LIST_TYPE_KEY);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
         ViewGroup viewGroup = (ViewGroup) inflater.inflate(R.layout.event_list_fragment, container, false);
         if (viewGroup != null) {
             // Populate our list adapter
-            ArrayList<JSONObject> m_events = new ArrayList<>();
-            m_eventAdapter = new JIEventAdapter(getActivity(), R.layout.eventrow, m_events);
+            ArrayList<Event> m_events = new ArrayList<>();
+            m_eventAdapter = new EventListAdapter(getActivity(), R.layout.eventrow, m_events);
             setListAdapter(m_eventAdapter);
 
             signInButton = (Button) viewGroup.findViewById(R.id.myEventsSignInButton);
@@ -101,7 +92,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
         notSignedInView = (LinearLayout) view.findViewById(R.id.notSignedInList);
 
         setViewVisibility(false, false);
-        setupEvents();
+        setupEventHandlers();
     }
 
     @Override
@@ -113,72 +104,75 @@ public class EventListFragment extends ListFragment implements EventListFragment
     @Override
     public void onPause() {
         super.onPause();
-        if (logInReceiver != null && parentActivity != null) {
-            parentActivity.unregisterReceiver(logInReceiver);
-        }
         pauseLoading();
     }
 
     public void pauseLoading() {
-        if (eventLoaderThread != null) {
-            eventLoaderThread.stopThread();
-        }
-        eventLoaderThread = null;
         listView = null;
+        if (parentActivity != null) {
+//            parentActivity.displayHorizontalProgress(false);
+        }
+        if (callback != null) {
+            callback.cancel();
+        }
     }
 
     public void onResume() {
         super.onResume();
+        eventType = getArguments().getString(ARG_LIST_TYPE_KEY);
+        android.util.Log.d("JOINDIN", "onResume called for " + eventType);
+        parentActivity = (Main) getActivity();
+        service = new APIService(parentActivity);
+        callback = new APIEventsCallback();
         listView = getListView();
 
-        if (parentActivity != null) {
-            logInReceiver = new LogInReceiver();
-            IntentFilter intentFilter = new IntentFilter(SettingsActivity.ACTION_USER_LOGGED_IN);
-            parentActivity.registerReceiver(logInReceiver, intentFilter);
-        }
-
-        if (getUserVisibleHint() && parentActivity != null) {
+        if (getUserVisibleHint()) {
             performEventListUpdate();
         }
-    }
-
-    @Override
-    public void onPauseFragment() {
-        pauseLoading();
-    }
-
-    @Override
-    public void onResumeFragment() {
     }
 
     @Override
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
-        if (eventType == null) {
-            return;
-        }
+        android.util.Log.d("JOINDIN", "setUserVisibleHint for " + eventType + ": " + (isVisibleToUser ? "true" : "false"));
         if (isVisibleToUser && parentActivity != null) {
+            android.util.Log.d("JOINDIN", "performing event list update for " + eventType);
             performEventListUpdate();
         }
     }
 
+    public void onPauseFragment() {
+        pauseLoading();
+    }
+
+    public void onResumeFragment() {
+    }
+
     private void setViewVisibility(boolean showList, boolean showNotSignedIn) {
         // List and empty view are opposites
-        listView.setVisibility(showList ? View.VISIBLE : View.GONE);
-        emptyView.setVisibility(showList ? View.GONE : View.VISIBLE);
+        if (listView != null) {
+            listView.setVisibility(showList ? View.VISIBLE : View.GONE);
+        }
+        if (emptyView != null) {
+            emptyView.setVisibility(showList ? View.GONE : View.VISIBLE);
+        }
 
-        notSignedInView.setVisibility(showNotSignedIn ? View.VISIBLE : View.GONE);
-        if (showNotSignedIn) {
-            emptyView.setVisibility(View.GONE);
+        if (notSignedInView != null) {
+            notSignedInView.setVisibility(showNotSignedIn ? View.VISIBLE : View.GONE);
+            if (showNotSignedIn && emptyView != null) {
+                emptyView.setVisibility(View.GONE);
+            }
         }
     }
 
-    private void performEventListUpdate() {
+    public void performEventListUpdate() {
         // My Events - check our signed-in status
         // We explicitly request a refresh of the authenticated status
+        parentActivity = (Main) getActivity();
         boolean isAuthenticated = parentActivity.isAuthenticated(true);
         if (eventType.equals(LIST_TYPE_MY_EVENTS)) {
             if (!isAuthenticated) {
+                parentActivity.displayHorizontalProgress(false);
                 setViewVisibility(false, true);
 
                 // Not signed in, no need to carry on
@@ -194,24 +188,26 @@ public class EventListFragment extends ListFragment implements EventListFragment
                 setViewVisibility(false, false);
             }
 
-            loadEvents(eventType);
+            fetchEvents();
         }
     }
 
-    void loadEvents(String type) {
-        if (eventLoaderThread != null) {
-            // Stop event loading thread, we're going to start a new one
-            eventLoaderThread.stopThread();
-        }
+    private void fetchEvents() {
+        parentActivity.displayHorizontalProgress(true);
 
-        // Create a event loader thread
-        eventLoaderThread = new EventLoaderThread();
-        eventLoaderThread.setDaemon(true);
-        eventLoaderThread.setPriority(Thread.NORM_PRIORITY - 1);
-        eventLoaderThread.startThread(type, parentActivity);
+        callback.reset();
+        HashMap<String, String> params = new HashMap<>();
+        params.put("filter", eventType);
+        currentCall = service.getAPI().events(params);
+        currentCall.enqueue(callback);
     }
 
-    protected void setupEvents() {
+    private void fetchEvents(String uri) {
+        currentCall = service.getAPI().eventsByUri(uri);
+        currentCall.enqueue(callback);
+    }
+
+    protected void setupEventHandlers() {
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
                 Intent myIntent = new Intent();
@@ -225,7 +221,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
         ((PullToRefreshListView) listView).setOnRefreshListener(new PullToRefreshListView.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                loadEvents(eventType);
+                fetchEvents();
             }
         });
         signInButton.setOnClickListener(new View.OnClickListener() {
@@ -241,6 +237,7 @@ public class EventListFragment extends ListFragment implements EventListFragment
      *  Display events by populating the m_eventAdapter (custom list) with items loaded from DB
      */
     public int displayEvents(String eventType) {
+        listView = getListView();
         if (listView != null) {
             setViewVisibility(true, false);
         }
@@ -254,9 +251,9 @@ public class EventListFragment extends ListFragment implements EventListFragment
 
         // Tell the adapter that our data set has changed so it can update it
         m_eventAdapter.notifyDataSetChanged();
-        if (listView != null) {
-            ((PullToRefreshListView) getListView()).onRefreshComplete();
-        }
+        ((PullToRefreshListView) listView).onRefreshComplete();
+
+        parentActivity.displayHorizontalProgress(false);
 
         return count;
     }
@@ -274,322 +271,79 @@ public class EventListFragment extends ListFragment implements EventListFragment
         m_eventAdapter.getFilter().filter(s);
     }
 
-    private void checkForUserData(JSONObject jsonResult)
-    {
-        JSONObject metaBlock = jsonResult.optJSONObject("meta");
-        if (metaBlock == null || metaBlock.length() == 0) {
-            return;
-        }
-
-        String userURI = metaBlock.optString("user_uri");
-        if (userURI == null || userURI.length() == 0) {
-            return;
-        }
-
-        UserManager userManager = new UserManager(getActivity());
-        if (!userManager.accountRequiresFurtherDetails()) {
-            return;
-        }
-        userManager.updateSavedUserDetails(userURI);
-    }
-
     /**
-     * Inner class: The thread that loads events in, and updates the fragment accordingly
+     * Retrofit callback: handle event loading
      */
-    class EventLoaderThread extends Thread {
-        private volatile Thread runner;
+    private class APIEventsCallback implements Callback<EventCollectionResponse<ArrayList<Event>>> {
+        private boolean isFirstLoad = true;
+        private boolean isCancelled = false;
+        private DataHelper dataHelper;
 
-        private String eventType;
-        private Main parentActivity;
-
-        public synchronized void startThread(String type, Main parentActivity) {
-            eventType = type;
-            this.parentActivity = parentActivity;
-
-            if (runner == null) {
-                runner = new Thread(this);
-                runner.start();
-            }
+        public APIEventsCallback() {
+            dataHelper = DataHelper.getInstance();
         }
 
-        public synchronized void stopThread() {
-            // Already stopped
-            if (runner == null) {
-                return;
-            }
-
-            Thread moribund = runner;
-            runner = null;
-            moribund.interrupt();
+        public void reset() {
+            isFirstLoad = true;
+            isCancelled = false;
         }
 
-        public void run() {
-
-            // Get some event data from the joind.in API
-            String uriToUse;
-            rest = new JIRest(parentActivity);
-            String urlPostfix = "events";
-            if (!eventType.equals(EventListFragment.LIST_TYPE_MY_EVENTS)) {
-                if (eventType.length() > 0) {
-                    urlPostfix += "?filter=" + eventType;
-                }
-                uriToUse = rest.makeFullURI(urlPostfix);
-            } else {
-                // Use the "attended_events_uri" property on the user metadata
-                uriToUse = parentActivity.getAccountData(getString(R.string.authUserURIAttendedEvents));
-            }
-
-            JSONObject fullResponse;
-            JSONObject metaObj;
-            DataHelper dh = DataHelper.getInstance(parentActivity);
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(parentActivity.getApplicationContext());
-            boolean isFirst = true;
-            int error = JIRest.OK; // default
-
-            parentActivity.displayHorizontalProgress(true);
-            try {
-                do {
-                    error = rest.getJSONFullURI(uriToUse);
-
-                    if (error == JIRest.OK) {
-
-                        fullResponse = rest.getJSONResult();
-                        if (fullResponse == null) {
-                            break;
-                        }
-                        metaObj = fullResponse.getJSONObject("meta");
-
-                        if (isFirst) {
-                            dh.deleteAllEventsFromType(eventType);
-                            isFirst = false;
-
-                            // Update user details on first hit if we need to
-                            checkForUserData(fullResponse);
-                        }
-                        JSONArray json = fullResponse.getJSONArray("events");
-
-                        for (int i = 0; i != json.length(); i++) {
-                            JSONObject json_event = json.getJSONObject(i);
-
-                            // Don't add when we are adding to the Past AND we want to display "attended only"
-                            if (eventType.equals("past")
-                                    && prefs.getBoolean("attendonly", false)
-                                    && !json_event.optBoolean("user_attending")) {
-                                continue;
-                            }
-                            dh.insertEvent(eventType, json_event);
-                        }
-                        uriToUse = metaObj.getString("next_page");
-
-                        // Yield to the view, so some display
-                        uiDisplayEvents();
-
-                        // If we're looking at "hot" events, this API call just
-                        // returns events, and more events, and more events....
-                        // so we'll just stop after the first round
-                        if (eventType.equals("hot")) {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                } while (Thread.currentThread() == runner && metaObj.getInt("count") > 0 && !interrupted());
-            } catch (JSONException e) {
-                uiDisplayEvents();
-            }
-
-            // Something bad happened? :(
-            if (error != JIRest.OK) {
-                if (parentActivity != null && rest.getError().length() > 0) {
-                    parentActivity.runOnUiThread(new Runnable() {
-                        public void run() {
-                            // Display result from the rest to the user
-                            Toast toast = Toast.makeText(parentActivity, rest.getError(), Toast.LENGTH_LONG);
-                            toast.show();
-                        }
-                    });
-                }
-            }
-
-            // Show the events
-            uiDisplayEvents();
-            if (parentActivity != null) {
-                parentActivity.displayHorizontalProgress(false);
-            }
+        public void cancel() {
+            isCancelled = true;
         }
-    }
 
-    private void uiDisplayEvents() {
-        if (parentActivity != null) {
-            parentActivity.runOnUiThread(new Runnable() {
-                public void run() {
-                    displayEvents(eventType);
-                }
-            });
-        }
-    }
-
-    /**
-     * Handle login intents
-     */
-    private class LogInReceiver extends BroadcastReceiver {
         @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (action == null) {
+        public void onResponse(Call<EventCollectionResponse<ArrayList<Event>>> call, Response<EventCollectionResponse<ArrayList<Event>>> response) {
+            if (isFirstLoad) {
+                dataHelper.deleteAllEventsFromType(eventType);
+                checkForUserData(response.body().meta);
+                isFirstLoad = false;
+            }
+            String nextPage = response.body().meta.next_page;
+
+            ArrayList<Event> events = response.body().events;
+            for (Event event : events) {
+                m_eventAdapter.add(event);
+            }
+            dataHelper.insertEvents(eventType, events);
+
+            if (nextPage == null) {
+                displayEvents(eventType);
                 return;
             }
-            if (action.equals(SettingsActivity.ACTION_USER_LOGGED_IN)) {
-                performEventListUpdate();
-            }
-        }
-    }
-}
 
-
-class JIEventAdapter extends ArrayAdapter<JSONObject> {
-    private final ArrayList<JSONObject> all_items;
-    private ArrayList<JSONObject> filtered_items;
-    private Context context;
-    LayoutInflater inflater;
-    private PTypeFilter filter;
-    private Picasso picasso;
-
-    public int getCount() {
-        return filtered_items.size();
-    }
-
-    public JSONObject getItem(int position) {
-        return filtered_items.get(position);
-    }
-
-    public JIEventAdapter(Context context, int textViewResourceId, ArrayList<JSONObject> items) {
-        super(context, textViewResourceId, items);
-        this.context = context;
-        this.all_items = items;
-        this.filtered_items = items;
-        this.inflater = (LayoutInflater) this.context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        this.picasso = new Picasso.Builder(context)
-            .listener(new Picasso.Listener() {
-                @Override
-                public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
-                    android.util.Log.d("JOINDIN", "Failed to load image: " + uri.toString());
-                }
-            })
-            .build();
-    }
-
-    // This function will create a custom row with our event data.
-    public View getView(int position, View convertView, ViewGroup parent) {
-        if (convertView == null) {
-            convertView = this.inflater.inflate(R.layout.eventrow, parent, false);
-        }
-
-        // Get the (JSON) data we need
-        JSONObject o = filtered_items.get(position);
-        if (o == null) return convertView;
-
-        // Display (or load in the background if needed) the event logo
-        ImageView el = (ImageView) convertView.findViewById(R.id.EventDetailLogo);
-        el.setTag("");
-        el.setVisibility(View.VISIBLE);
-
-        // Display (or load in the background if needed) the event logo
-        JSONObject images = o.optJSONObject("images");
-        if (images != null && images.length() > 0) {
-            JSONObject smallImage = images.optJSONObject("small");
-            String url = smallImage.optString("url");
-            el.setTag(url);
-            this.picasso.load(url).resize(70,70).into(el);
-        } else {
-            el.setImageResource(R.drawable.event_icon_none);
-        }
-
-        // Set a darker color when the event is currently running.
-        long event_start = 0;
-        long event_end = 0;
-        try {
-            event_start = new SimpleDateFormat(context.getString(R.string.apiDateFormat), Locale.US).parse(o.optString("start_date")).getTime();
-            event_end = new SimpleDateFormat(context.getString(R.string.apiDateFormat), Locale.US).parse(o.optString("end_date")).getTime();
-        } catch (ParseException e) {
-            // do nothing
-        }
-        long cts = System.currentTimeMillis() / 1000;
-        if (event_start <= cts && cts <= event_end) {
-            convertView.setBackgroundColor(Color.rgb(218, 218, 204));
-        } else {
-            // This isn't right. We shouldn't set a white color, but the default color
-            convertView.setBackgroundColor(Color.rgb(255, 255, 255));
-        }
-
-        // Find our textviews we need to fill
-        TextView tt = (TextView) convertView.findViewById(R.id.EventDetailCaption);
-        TextView bt = (TextView) convertView.findViewById(R.id.EventDetailDate);
-        TextView at = (TextView) convertView.findViewById(R.id.EventDetailAttending);
-
-        // When the user is attending this event, we display our "attending" image.
-        ImageView im = (ImageView) convertView.findViewById(R.id.EventDetailAttendingImg);
-        if (!o.optBoolean("attending")) {
-            im.setVisibility(View.GONE);
-        } else {
-            im.setVisibility(View.VISIBLE);
-        }
-
-        // Set our texts
-        if (at != null)
-            at.setText(String.format(this.context.getString(R.string.activityMainAttending), o.optInt("attendee_count")));
-        if (tt != null) tt.setText(o.optString("name"));
-        if (bt != null) {
-            // Display start date. Only display end date when it differs (ie: it's multiple day event)
-            // Android 2.2 and below don't support the "L" pattern character
-            String fmt = Build.VERSION.SDK_INT <= 8 ? "d MMM yyyy" : "d LLL yyyy";
-            String d1 = DateHelper.parseAndFormat(o.optString("start_date"), fmt);
-            String d2 = DateHelper.parseAndFormat(o.optString("end_date"), fmt);
-            bt.setText(d1.equals(d2) ? d1 : d1 + " - " + d2);
-        }
-
-        return convertView;
-    }
-
-
-    public Filter getFilter() {
-        if (filter == null) {
-            filter = new PTypeFilter();
-        }
-        return filter;
-    }
-
-    private class PTypeFilter extends Filter {
-        @SuppressWarnings("unchecked")
-        protected void publishResults(CharSequence prefix, FilterResults results) {
-            filtered_items = (ArrayList<JSONObject>) results.values;
-            notifyDataSetChanged();
-        }
-
-        protected FilterResults performFiltering(CharSequence prefix) {
-            FilterResults results = new FilterResults();
-            ArrayList<JSONObject> i = new ArrayList<>();
-
-            if (prefix != null && prefix.toString().length() > 0) {
-
-                for (int index = 0; index < all_items.size(); index++) {
-                    JSONObject json = all_items.get(index);
-                    String title = json.optString("name");
-                    // Add to the filtered result list when our string is found in the event_name
-                    if (title.toUpperCase().contains(prefix.toString().toUpperCase()))
-                        i.add(json);
-                }
-                results.values = i;
-                results.count = i.size();
-            } else {
-                // No more filtering, display all items
-                synchronized (all_items) {
-                    results.values = all_items;
-                    results.count = all_items.size();
-                }
+            // Don't continue after one round of Hot events
+            if (eventType.equals(LIST_TYPE_HOT)) {
+                displayEvents(eventType);
+                return;
             }
 
-            return results;
+            if (!isCancelled) {
+                m_eventAdapter.notifyDataSetChanged();
+                fetchEvents(nextPage);
+            }
+        }
+
+        @Override
+        public void onFailure(Call<EventCollectionResponse<ArrayList<Event>>> call, Throwable t) {
+            parentActivity.displayHorizontalProgress(false);
+            displayEvents(eventType);
+            Toast toast = Toast.makeText(parentActivity, getString(R.string.activityMainCouldntLoadEvents), Toast.LENGTH_LONG);
+            toast.show();
+        }
+
+        private void checkForUserData(Metadata metadata) {
+            String userURI = metadata.user_uri;
+            if (userURI == null || userURI.length() == 0) {
+                return;
+            }
+
+
+            UserManager userManager = new UserManager(getActivity());
+            if (!userManager.accountRequiresFurtherDetails()) {
+                return;
+            }
+            userManager.updateSavedUserDetails(userURI);
         }
     }
 }

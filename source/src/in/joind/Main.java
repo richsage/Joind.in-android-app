@@ -8,6 +8,9 @@ import java.io.InputStreamReader;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.SearchManager;
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.PorterDuff;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.ViewPager;
@@ -22,6 +25,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ProgressBar;
 
+import in.joind.activity.SettingsActivity;
 import in.joind.adapter.EventTypePagerAdapter;
 import in.joind.fragment.FragmentLifecycle;
 
@@ -44,6 +48,7 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
     ViewPager viewPager;
     EventTypePagerAdapter pagerAdapter;
     ProgressBar progressBar;
+    LogInReceiver logInReceiver;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,11 +80,13 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
             @Override
             public void onPageSelected(int newPosition) {
                 saveState(newPosition);
+                // Get the actual fragment we're moving away from
+                // so we can tell it to stop any network activity
+                FragmentLifecycle fragmentToHide = (FragmentLifecycle) pagerAdapter.instantiateItem(viewPager, currentPosition);
+                fragmentToHide.onPauseFragment();
+
                 FragmentLifecycle fragmentToShow = (FragmentLifecycle) pagerAdapter.getItem(newPosition);
                 fragmentToShow.onResumeFragment();
-
-                FragmentLifecycle fragmentToHide = (FragmentLifecycle) pagerAdapter.getItem(currentPosition);
-                fragmentToHide.onPauseFragment();
 
                 currentPosition = newPosition;
             }
@@ -96,7 +103,7 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
         });
     }
 
-    // Will reload events. Needed when we return to the screen.
+    @Override
     public void onResume() {
         super.onResume();
 
@@ -111,6 +118,17 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);
         progressBar.getIndeterminateDrawable().setColorFilter(color, PorterDuff.Mode.SRC_IN);
         progressBar.getProgressDrawable().setColorFilter(color, PorterDuff.Mode.SRC_IN);
+
+        logInReceiver = new LogInReceiver();
+        IntentFilter intentFilter = new IntentFilter(SettingsActivity.ACTION_USER_LOGGED_IN);
+        registerReceiver(logInReceiver, intentFilter);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        unregisterReceiver(logInReceiver);
     }
 
     // Overriding the JIActivity add sort-items
@@ -193,32 +211,31 @@ public class Main extends JIActivity implements SearchView.OnQueryTextListener {
     }
 
     public void displayHorizontalProgress(final boolean state) {
+        new Throwable().printStackTrace();
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 View v = findViewById(R.id.progress_bar);
+                android.util.Log.d("JOINDIN", "progress bar is " + (state ? "visible" : "hidden"));
                 v.setVisibility(state ? View.VISIBLE : View.GONE);
             }
         });
     }
 
     /**
-     * Retrieves account data for the signed-in account
-     * Returns null if there is no account (user not signed in)
-     *
-     * @param key
-     * @return
+     * Handle login intents
      */
-    public String getAccountData(String key)
-    {
-        AccountManager accountManager = AccountManager.get(this);
-        Account[] accounts = accountManager.getAccountsByType(getString(R.string.authenticatorAccountType));
-        Account thisAccount = (accounts.length > 0 ? accounts[0] : null);
-
-        if (thisAccount == null || thisAccount.name.equals("")) {
-            return null;
+    private class LogInReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action == null) {
+                return;
+            }
+            if (action.equals(SettingsActivity.ACTION_USER_LOGGED_IN)) {
+                EventListFragmentInterface fragment = (EventListFragmentInterface) pagerAdapter.instantiateItem(viewPager, viewPager.getCurrentItem());
+                fragment.performEventListUpdate();
+            }
         }
-
-        return accountManager.getUserData(thisAccount, key);
     }
 }

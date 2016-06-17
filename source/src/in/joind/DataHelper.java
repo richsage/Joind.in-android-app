@@ -15,13 +15,21 @@ package in.joind;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 
+import com.google.gson.Gson;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+
+import in.joind.adapter.EventListAdapter;
+import in.joind.model.Event;
 
 
 public final class DataHelper {
@@ -37,9 +45,12 @@ public final class DataHelper {
 
     private SQLiteDatabase db = null;
 
+    private Gson gson;
+
     private DataHelper(Context context) {
         OpenHelper openHelper = new OpenHelper(context);
         this.db = openHelper.getWritableDatabase();
+        this.gson = new Gson();
     }
 
     public static DataHelper createInstance(Context context) {
@@ -64,23 +75,48 @@ public final class DataHelper {
     }
 
     // Updates a event
-    public long updateEvent(int eventRowID, JSONObject event) {
+    public long updateEvent(int eventRowID, Event event) {
         ContentValues values = new ContentValues();
-        values.put("json", event.toString());
+        values.put("event_uri", event.uri);
+        values.put("event_start", event.start_date);
+        values.put("event_title", event.name);
+        values.put("json", gson.toJson(event));
+
         return db.update("events", values, "_rowid_=?", new String[]{Integer.toString(eventRowID)});
     }
 
-    // insert a new event to specified event_type (hot, pending, past etc)
-    public long insertEvent(String event_type, JSONObject event) {
-        ContentValues values = new ContentValues();
-        values.put("event_uri", event.optString("uri"));
-        values.put("event_start", event.optInt("start_date"));
-        values.put("event_title", event.optString("name"));
-        values.put("json", event.toString());
+    /**
+     * Bulk insertion of array of Events
+     *
+     * @param event_type
+     * @param events
+     */
+    public void insertEvents(String event_type, ArrayList<Event> events) {
+        try {
+            db.beginTransaction();
+            for (Event event : events) {
+                insertEvent(event_type, event);
+            }
+            db.setTransactionSuccessful();
+        } catch (SQLException e) {
+            android.util.Log.e(Main.LOG_JOINDIN_APP, "Couldn't save event");
+        } finally {
+            db.endTransaction();
+        }
+    }
 
-        long eventID = getEventIDByURI(event.optString("uri"));
+    // insert a new event to specified event_type (hot, pending, past etc)
+    public long insertEvent(String event_type, Event event) {
+        ContentValues values = new ContentValues();
+        values.put("event_uri", event.uri);
+        values.put("event_start", event.start_date);
+        values.put("event_title", event.name);
+        values.put("json", gson.toJson(event));
+
+        long eventID = getEventIDByURI(event.uri);
         if (eventID > 0) {
             db.delete("event_types", "event_id=? AND event_type=?", new String[]{String.valueOf(eventID), event_type});
+            db.update("events", values, "_rowid_=?", new String[]{String.valueOf(eventID)});
         } else {
             eventID = db.insert("events", "", values);
         }
@@ -230,16 +266,7 @@ public final class DataHelper {
     }
 
     // Populates an event adapter and return the number of items populated
-    public int populateEvents(String event_type, JIEventAdapter m_eventAdapter, int order) {
-        // Different handling for favorite list
-        if (event_type.equals("favorites")) {
-            Cursor c = this.db.rawQuery("SELECT json,events._rowid_ FROM events INNER JOIN favlist ON favlist.event_id = events._rowid_", null);
-            int count = c.getCount();
-            populate(c, m_eventAdapter);
-            return count;
-        }
-
-
+    public int populateEvents(String event_type, EventListAdapter m_eventAdapter, int order) {
         String order_sql = "";
 
         switch (order) {
@@ -258,9 +285,20 @@ public final class DataHelper {
         }
 
         Cursor c = this.db.rawQuery("SELECT json,events._rowid_ FROM events INNER JOIN event_types ON event_id = events._rowid_ WHERE event_types.event_type = '" + event_type + "' " + order_sql, null);
+        if (c == null) return 0;
 
         int count = c.getCount();
-        populate(c, m_eventAdapter);
+
+        if (c.moveToFirst()) {
+            do {
+                Event event = gson.fromJson(c.getString(0), Event.class);
+                event._rowID = c.getInt(1);
+                m_eventAdapter.add(event);
+            } while (c.moveToNext());
+        }
+
+        if (!c.isClosed()) c.close();
+
         return count;
     }
 

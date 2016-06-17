@@ -25,7 +25,15 @@ import android.widget.Toast;
 
 import com.crashlytics.android.Crashlytics;
 
+import java.util.ArrayList;
+
 import in.joind.activity.SettingsActivity;
+import in.joind.api.APIService;
+import in.joind.model.Event;
+import in.joind.model.EventCollectionResponse;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class JIActivity extends ActionBarActivity {
 
